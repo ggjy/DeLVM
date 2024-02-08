@@ -1,4 +1,4 @@
-## Implementation of  "[Data-efficient Large Vision Models through Sequential Autoregression]()".
+## Implementation of  "[Data-efficient Large Vision Models through Sequential Autoregression](https://arxiv.org/pdf/2402.04841.pdf)".
 
 
 <p align="center">
@@ -25,7 +25,7 @@ based on InternLM-v0.2.1dev20231121
 
 Install: `https://github.com/InternLM/InternLM/blob/v0.2.1dev20231121/doc/en/install.md`
 
-Put data to `/path/to/data/vision`
+Put your training data to `/path/to/data/vision`.
 
 Training command:
 `torchrun --nproc_per_node 8 train.py --config ./configs/pretrain_300m.py --launcher torch`
@@ -34,6 +34,8 @@ Training via KD command:
 `torchrun --nproc_per_node 8 train.py --config ./configs/kd_1b_to_300m.py --launcher torch`
 
 Convert model and inference example: `./tools`
+
+The corresponding huggingface ckpt can be downloaded at [LLaMA_300m_hf](https://github.com/ggjy/DeLVM/releases/download/hf-ckpt/llama_300m_hf.zip).
 
 
 ### Citation
