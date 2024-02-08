@@ -13,7 +13,7 @@ In this paper, we delve into the development of an efficient, autoregression-bas
 #### TODO List
 - [X] Code about training models.
 - [X] Code about inferencing models.
-- [ ] Huggingface & InternLM ckpts.
+- [X] Huggingface & InternLM ckpts.
 - [ ] Code about data generation.
 
 
@@ -35,7 +35,7 @@ Training via KD command:
 
 Convert model and inference example: `./tools`
 
-The corresponding huggingface ckpt can be downloaded at [LLaMA_1b_hf Baidu Disk](https://pan.baidu.com/s/12oI_TOVHtbhriM1Bu1TXmw?pwd=1234) [LLaMA_300m_hf](https://github.com/ggjy/DeLVM/releases/download/hf-ckpt/llama_300m_hf.zip).
+The corresponding huggingface ckpt can be downloaded at [LLaMA-1b-hf Baidu Disk](https://pan.baidu.com/s/12oI_TOVHtbhriM1Bu1TXmw?pwd=1234) and [LLaMA-300m-hf](https://github.com/ggjy/DeLVM/releases/download/hf-ckpt/llama_300m_hf.zip).
 
 
 ### Citation
