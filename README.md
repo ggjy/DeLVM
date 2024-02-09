@@ -35,7 +35,7 @@ Training via KD command:
 
 Convert model and inference example: `./tools`
 
-The corresponding huggingface ckpt can be downloaded at [LLaMA-1b-hf Baidu Disk](https://pan.baidu.com/s/12oI_TOVHtbhriM1Bu1TXmw?pwd=1234) and [LLaMA-300m-hf](https://github.com/ggjy/DeLVM/releases/download/hf-ckpt/llama_300m_hf.zip).
+The corresponding huggingface ckpt can be downloaded at [LLaMA-1b-hf Onedrive](https://unisyd-my.sharepoint.com/:u:/g/personal/han_wu_sydney_edu_au/EQx8q3DvqP1CqOddm0aYN4wBBywVAOSvyB1P12ItzuNDmw?e=uOkUnP) / [LLaMA-1b-hf Baidu Disk](https://pan.baidu.com/s/12oI_TOVHtbhriM1Bu1TXmw?pwd=1234) and [LLaMA-300m-hf](https://github.com/ggjy/DeLVM/releases/download/hf-ckpt/llama_300m_hf.zip).
 
 
 ### Citation
