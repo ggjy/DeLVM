@@ -3,22 +3,22 @@ import random
 
 import multiprocess
 import numpy as np
-import mindspore
-from mindspore import nn
+import torch
+from torch import nn
 
 from .load import load_model
 
 
 def init_seed():
     # set seed
-    import mindspore
+    import torch
     random_seed = 1
     random.seed(42)
-    mindspore.set_grad_enabled(False)
-    mindspore.manual_seed(random_seed)
-    mindspore.cuda.manual_seed(random_seed)
-    mindspore.backends.cudnn.deterministic = True
-    mindspore.backends.cudnn.benchmark = False
+    torch.set_grad_enabled(False)
+    torch.manual_seed(random_seed)
+    torch.cuda.manual_seed(random_seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
     np.random.seed(random_seed)
 
 
@@ -46,7 +46,7 @@ def init_vqgan_encoder(model_name_or_path, device):
 
 def get_multiprocess():
     multiprocess.set_start_method('spawn', force=True)
-    mindspore.utils.data.dataloader.python_multiprocessing = multiprocess
+    torch.utils.data.dataloader.python_multiprocessing = multiprocess
     new_multiprocess_ctx = multiprocess.get_context()
     return new_multiprocess_ctx
 

@@ -1,12 +1,12 @@
 from typing import List, Tuple
 
-import mindspore
-import mindspore.nn as nn
-import mindsporevision.transforms.functional as F
+import torch
+import torch.nn as nn
+import torchvision.transforms.functional as F
 from PIL import Image
-from mindspore import Tensor
-from mindsporevision import transforms
-from mindsporevision.transforms import Lambda
+from torch import Tensor
+from torchvision import transforms
+from torchvision.transforms import Lambda
 
 from .muse import VQGANModel
 
@@ -47,7 +47,7 @@ def load_decoder_code(path):
 
 def convert_decode_to_pil(rec_image):
     rec_image = 2.0 * rec_image - 1.0
-    rec_image = mindspore.clamp(rec_image, -1.0, 1.0)
+    rec_image = torch.clamp(rec_image, -1.0, 1.0)
     rec_image = (rec_image + 1.0) / 2.0
     rec_image *= 255.0
     rec_image = rec_image.permute(0, 2, 3, 1).detach().cpu().numpy().astype(np.uint8)
@@ -55,7 +55,7 @@ def convert_decode_to_pil(rec_image):
     return pil_images
 
 
-class SixCrop(mindspore.nn.Module):
+class SixCrop(torch.nn.Module):
     def __init__(self, crop_size):
         super().__init__()
         self.crop_size = crop_size
@@ -69,7 +69,7 @@ class SixCrop(mindspore.nn.Module):
     #     Returns:
     #         List[int]: The image dimensions.
     #     """
-    #     if isinstance(img, mindspore.Tensor):
+    #     if isinstance(img, torch.Tensor):
     #         return F_t.get_dimensions(img)
     #
     #     return F_pil.get_dimensions(img)
@@ -84,7 +84,7 @@ class SixCrop(mindspore.nn.Module):
     
     def six_crop(self, img: Tensor) -> Tuple[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]:
         """Crop the given image into four corners and the central crop.
-        If the image is mindspore Tensor, it is expected
+        If the image is torch Tensor, it is expected
         to have [..., H, W] shape, where ... means an arbitrary number of leading dimensions
 
         .. Note::
@@ -101,7 +101,7 @@ class SixCrop(mindspore.nn.Module):
            tuple: tuple (tl, tr, bl, br, center)
            Corresponding top left, top right, bottom left, bottom right and center crop.
         """
-        # if not mindspore.jit.is_scripting() and not mindspore.jit.is_tracing():
+        # if not torch.jit.is_scripting() and not torch.jit.is_tracing():
         #     _log_api_usage_once(five_crop)
         
         crop_height, crop_width = self.crop_size

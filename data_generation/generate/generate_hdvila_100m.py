@@ -18,9 +18,9 @@ from tqdm import tqdm
 from PIL import Image
 # from joblib import Parallel, delayed
 
-import mindspore
+import torch
 from timm.data import ImageDataset
-from mindspore.utils.data import DataLoader
+from torch.utils.data import DataLoader
 
 from vqgan.load import encode_transform
 from vqgan.utils import init_vqgan_encoder, get_multiprocess
@@ -91,7 +91,7 @@ def get_args():
     args = parser.parse_args()
     
     if args.num_gpu == -1:
-        args.num_gpu = mindspore.cuda.device_count()
+        args.num_gpu = torch.cuda.device_count()
     
     return args
 

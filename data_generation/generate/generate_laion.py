@@ -17,7 +17,7 @@ import time
 from multiprocessing import Pool
 
 from timm.data import ImageDataset
-from mindspore.utils.data import DataLoader
+from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from generate.img_to_token import img_to_token

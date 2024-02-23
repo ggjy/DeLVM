@@ -24,8 +24,8 @@ from os.path import join
 from joblib import delayed, Parallel
 from pycocotools import mask as mask_utils
 
-import mindspore
-from mindsporevision.datasets import VisionDataset
+import torch
+from torchvision.datasets import VisionDataset
 
 from generate.img_to_token import img_to_token
 from vqgan.load import six_crop_encode_transform
@@ -45,25 +45,25 @@ def convert_anns_to_mask(sam_label):
         return
     
     sorted_anns = sorted(anns, key=(lambda x: x['area']), reverse=True)
-    mask_img = mindspore.zeros((height, width, 3), device=device)
-    one_img = mindspore.ones((height, width, 3), device=device)
+    mask_img = torch.zeros((height, width, 3), device=device)
+    one_img = torch.ones((height, width, 3), device=device)
     
     for ann in sorted_anns:
         mask = mask_utils.decode(ann['segmentation'])
-        mask = mindspore.tensor(mask, device=device)
-        mask = mindspore.repeat_interleave(mask.unsqueeze(dim=2), repeats=3, dim=2)
+        mask = torch.tensor(mask, device=device)
+        mask = torch.repeat_interleave(mask.unsqueeze(dim=2), repeats=3, dim=2)
         
-        color_mask = mindspore.rand(3, device=device) * one_img
+        color_mask = torch.rand(3, device=device) * one_img
         mask_img += color_mask * mask
         
         del mask, color_mask
-        mindspore.cuda.empty_cache()
+        torch.cuda.empty_cache()
     
     mask_img_npy = mask_img.cpu().numpy()
     mask_img_npy = (255 * mask_img_npy).astype(np.uint8)
     
     del mask_img, one_img
-    mindspore.cuda.empty_cache()
+    torch.cuda.empty_cache()
     
     return mask_img_npy
 
@@ -123,10 +123,10 @@ class SamDataset(VisionDataset):
         
         data_list = []
         for _img, _mask_img in zip(images, mask_imgs):
-            _data = mindspore.stack([_img, _mask_img], dim=0)
+            _data = torch.stack([_img, _mask_img], dim=0)
             data_list.append(_data)
         
-        data = mindspore.cat(data_list, dim=0)
+        data = torch.cat(data_list, dim=0)
         
         return data
     

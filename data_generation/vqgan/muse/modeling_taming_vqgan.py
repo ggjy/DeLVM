@@ -16,10 +16,10 @@ import math
 from functools import partial
 from typing import Tuple
 
-import mindspore
-import mindspore.nn.functional as F
-import mindspore.utils.checkpoint
-from mindspore import nn
+import torch
+import torch.nn.functional as F
+import torch.utils.checkpoint
+from torch import nn
 
 from .modeling_utils import ConfigMixin, ModelMixin, register_to_config
 
@@ -38,7 +38,7 @@ class Upsample(nn.Module):
             )
 
     def forward(self, hidden_states):
-        hidden_states = mindspore.nn.functional.interpolate(hidden_states, scale_factor=2.0, mode="nearest")
+        hidden_states = torch.nn.functional.interpolate(hidden_states, scale_factor=2.0, mode="nearest")
         if self.with_conv:
             hidden_states = self.conv(hidden_states)
         return hidden_states
@@ -55,10 +55,10 @@ class Downsample(nn.Module):
     def forward(self, hidden_states):
         if self.with_conv:
             pad = (0, 1, 0, 1)  # pad height and width dim
-            hidden_states = mindspore.nn.functional.pad(hidden_states, pad, mode="constant", value=0)
+            hidden_states = torch.nn.functional.pad(hidden_states, pad, mode="constant", value=0)
             hidden_states = self.conv(hidden_states)
         else:
-            hidden_states = mindspore.nn.functional.avg_pool2d(hidden_states, kernel_size=2, stride=2)
+            hidden_states = torch.nn.functional.avg_pool2d(hidden_states, kernel_size=2, stride=2)
         return hidden_states
 
 
@@ -159,14 +159,14 @@ class AttnBlock(nn.Module):
         query = query.permute(0, 2, 1)  # (b, hw, c)
         key = key.reshape((batch, channels, height * width))
 
-        attn_weights = mindspore.bmm(query, key)  # b,hw,hw
+        attn_weights = torch.bmm(query, key)  # b,hw,hw
         attn_weights = attn_weights * (int(channels) ** -0.5)
         attn_weights = nn.functional.softmax(attn_weights, dim=2)
 
         # attend to values
         value = value.reshape((batch, channels, height * width))
         attn_weights = attn_weights.permute(0, 2, 1)
-        hidden_states = mindspore.bmm(value, attn_weights)
+        hidden_states = torch.bmm(value, attn_weights)
         hidden_states = hidden_states.reshape((batch, channels, height, width))
 
         hidden_states = self.proj_out(hidden_states)
@@ -437,12 +437,12 @@ class VectorQuantizer(nn.Module):
         hidden_states = hidden_states.permute(0, 2, 3, 1).contiguous()
 
         distances = self.compute_distances(hidden_states)
-        min_encoding_indices = mindspore.argmin(distances, axis=1).unsqueeze(1)
-        min_encodings = mindspore.zeros(min_encoding_indices.shape[0], self.num_embeddings).to(hidden_states)
+        min_encoding_indices = torch.argmin(distances, axis=1).unsqueeze(1)
+        min_encodings = torch.zeros(min_encoding_indices.shape[0], self.num_embeddings).to(hidden_states)
         min_encodings.scatter_(1, min_encoding_indices, 1)
 
         # get quantized latent vectors
-        z_q = mindspore.matmul(min_encodings, self.embedding.weight).view(hidden_states.shape)
+        z_q = torch.matmul(min_encodings, self.embedding.weight).view(hidden_states.shape)
 
         # reshape to (batch, num_tokens)
         min_encoding_indices = min_encoding_indices.reshape(hidden_states.shape[0], -1)
@@ -450,7 +450,7 @@ class VectorQuantizer(nn.Module):
         # compute loss for embedding
         loss = None
         if return_loss:
-            loss = mindspore.mean((z_q.detach() - hidden_states) ** 2) + self.commitment_cost * mindspore.mean(
+            loss = torch.mean((z_q.detach() - hidden_states) ** 2) + self.commitment_cost * torch.mean(
                 (z_q - hidden_states.detach()) ** 2
             )
             # preserve gradients
@@ -468,7 +468,7 @@ class VectorQuantizer(nn.Module):
 
         inputs_norm_sq = hidden_states_flattended.pow(2.0).sum(dim=1, keepdim=True)
         codebook_t_norm_sq = emb_weights.pow(2.0).sum(dim=0, keepdim=True)
-        distances = mindspore.addmm(
+        distances = torch.addmm(
             inputs_norm_sq + codebook_t_norm_sq,
             hidden_states_flattended,
             emb_weights,
@@ -491,7 +491,7 @@ class VectorQuantizer(nn.Module):
 
         soft_code = F.softmax(-distances / temp, dim=-1)  # (batch * height * width, num_embeddings)
         if stochastic:
-            code = mindspore.multinomial(soft_code, 1)  # (batch * height * width, 1)
+            code = torch.multinomial(soft_code, 1)  # (batch * height * width, 1)
         else:
             code = distances.argmin(dim=-1)  # (batch * height * width)
 
@@ -504,7 +504,7 @@ class VectorQuantizer(nn.Module):
         # reshape z -> (batch, height, width, channel)
         hidden_states = hidden_states.permute(0, 2, 3, 1).contiguous()
         distances = self.compute_distances(hidden_states)
-        indices = mindspore.argmin(distances, axis=1).unsqueeze(1)
+        indices = torch.argmin(distances, axis=1).unsqueeze(1)
         indices = indices.reshape(hidden_states.shape[0], -1)
         return indices
 

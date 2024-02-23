@@ -4,8 +4,8 @@ from itertools import chain
 from os.path import join
 
 import numpy as np
-import mindspore
-from mindspore import nn
+import torch
+from torch import nn
 from tqdm import tqdm
 
 from vqgan.utils import init_vqgan_encoder
@@ -19,15 +19,15 @@ def data_loader_to_token(encoder, data_loader, device):
         _data = _data.to(device)
         
         if _data.dim() == 5:
-            data_list = list(mindspore.split(_data, 1, dim=0))
+            data_list = list(torch.split(_data, 1, dim=0))
             data_list = [i.squeeze(dim=0) for i in data_list]
-            data = mindspore.cat(data_list, dim=0)
+            data = torch.cat(data_list, dim=0)
         else:
             data = _data
         
         _, out_tokens = encoder(data)
         
-        indices_list = list(mindspore.split(out_tokens, 2, dim=0))
+        indices_list = list(torch.split(out_tokens, 2, dim=0))
         
         for indices in indices_list:
             tokens = list(chain(*indices.tolist()))

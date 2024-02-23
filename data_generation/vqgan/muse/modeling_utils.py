@@ -24,7 +24,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import accelerate
 import numpy as np
-import mindspore
+import torch
 from accelerate.utils import set_module_tensor_to_device
 from huggingface_hub import hf_hub_download
 from huggingface_hub.utils import (
@@ -33,7 +33,7 @@ from huggingface_hub.utils import (
     RevisionNotFoundError,
 )
 from requests import HTTPError
-from mindspore import Tensor, device
+from torch import Tensor, device
 
 from . import __version__, logging
 
@@ -47,8 +47,8 @@ default_cache_path = os.path.join(hf_cache_home, "muse")
 
 
 CONFIG_NAME = "config.json"
-WEIGHTS_NAME = "pymindspore_model.bin"
-SAFETENSORS_WEIGHTS_NAME = "pymindspore_model.safetensors"
+WEIGHTS_NAME = "pytorch_model.bin"
+SAFETENSORS_WEIGHTS_NAME = "pytorch_model.safetensors"
 HUGGINGFACE_CO_RESOLVE_ENDPOINT = "https://huggingface.co"
 MUSE_CACHE = default_cache_path
 MUSE_DYNAMIC_MODULE_NAME = "myse_modules"
@@ -58,14 +58,14 @@ HF_MODULES_CACHE = os.getenv("HF_MODULES_CACHE", os.path.join(hf_cache_home, "mo
 _LOW_CPU_MEM_USAGE_DEFAULT = True
 
 
-def get_parameter_device(parameter: mindspore.nn.Module):
+def get_parameter_device(parameter: torch.nn.Module):
     try:
         return next(parameter.parameters()).device
     except StopIteration:
-        # For mindspore.nn.DataParallel compatibility in Pymindspore 1.5
+        # For torch.nn.DataParallel compatibility in Pytorch 1.5
 
-        def find_tensor_attributes(module: mindspore.nn.Module) -> List[Tuple[str, Tensor]]:
-            tuples = [(k, v) for k, v in module.__dict__.items() if mindspore.is_tensor(v)]
+        def find_tensor_attributes(module: torch.nn.Module) -> List[Tuple[str, Tensor]]:
+            tuples = [(k, v) for k, v in module.__dict__.items() if torch.is_tensor(v)]
             return tuples
 
         gen = parameter._named_members(get_members_fn=find_tensor_attributes)
@@ -73,14 +73,14 @@ def get_parameter_device(parameter: mindspore.nn.Module):
         return first_tuple[1].device
 
 
-def get_parameter_dtype(parameter: mindspore.nn.Module):
+def get_parameter_dtype(parameter: torch.nn.Module):
     try:
         return next(parameter.parameters()).dtype
     except StopIteration:
-        # For mindspore.nn.DataParallel compatibility in Pymindspore 1.5
+        # For torch.nn.DataParallel compatibility in Pytorch 1.5
 
-        def find_tensor_attributes(module: mindspore.nn.Module) -> List[Tuple[str, Tensor]]:
-            tuples = [(k, v) for k, v in module.__dict__.items() if mindspore.is_tensor(v)]
+        def find_tensor_attributes(module: torch.nn.Module) -> List[Tuple[str, Tensor]]:
+            tuples = [(k, v) for k, v in module.__dict__.items() if torch.is_tensor(v)]
             return tuples
 
         gen = parameter._named_members(get_members_fn=find_tensor_attributes)
@@ -94,7 +94,7 @@ def load_state_dict(checkpoint_file: Union[str, os.PathLike]):
     """
     try:
         if os.path.basename(checkpoint_file) == WEIGHTS_NAME:
-            return mindspore.load(checkpoint_file, map_location="cpu")
+            return torch.load(checkpoint_file, map_location="cpu")
     except Exception as e:
         try:
             with open(checkpoint_file) as f:
@@ -113,19 +113,19 @@ def load_state_dict(checkpoint_file: Union[str, os.PathLike]):
             raise OSError(
                 f"Unable to load weights from checkpoint file for '{checkpoint_file}' "
                 f"at '{checkpoint_file}'. "
-                "If you tried to load a Pymindspore model from a TF 2.0 checkpoint, please set from_tf=True."
+                "If you tried to load a Pytorch model from a TF 2.0 checkpoint, please set from_tf=True."
             )
 
 
 def _load_state_dict_into_model(model_to_load, state_dict):
-    # Convert old format to new format if needed from a Pymindspore state_dict
+    # Convert old format to new format if needed from a Pytorch state_dict
     # copy state_dict so _load_from_state_dict can modify it
     state_dict = state_dict.copy()
     error_msgs = []
 
-    # Pymindspore's `_load_from_state_dict` does not copy parameters in a module's descendants
+    # Pytorch's `_load_from_state_dict` does not copy parameters in a module's descendants
     # so we need to apply the function recursively.
-    def load(module: mindspore.nn.Module, prefix=""):
+    def load(module: torch.nn.Module, prefix=""):
         args = (state_dict, prefix, {}, True, [], [], error_msgs)
         module._load_from_state_dict(*args)
 
@@ -157,7 +157,7 @@ def _get_model_file(
         return pretrained_model_name_or_path
     elif os.path.isdir(pretrained_model_name_or_path):
         if os.path.isfile(os.path.join(pretrained_model_name_or_path, weights_name)):
-            # Load from a Pymindspore checkpoint
+            # Load from a Pytorch checkpoint
             model_file = os.path.join(pretrained_model_name_or_path, weights_name)
             return model_file
         elif subfolder is not None and os.path.isfile(
@@ -225,7 +225,7 @@ def _get_model_file(
             )
 
 
-class ModelMixin(mindspore.nn.Module):
+class ModelMixin(torch.nn.Module):
     r"""
     Base class for all models.
 
@@ -279,7 +279,7 @@ class ModelMixin(mindspore.nn.Module):
         # Recursively walk through all the children.
         # Any children which exposes the set_use_memory_efficient_attention_xformers method
         # gets the message
-        def fn_recursive_set_mem_eff(module: mindspore.nn.Module):
+        def fn_recursive_set_mem_eff(module: torch.nn.Module):
             if hasattr(module, "set_use_memory_efficient_attention_xformers"):
                 module.set_use_memory_efficient_attention_xformers(valid, attention_op)
 
@@ -287,7 +287,7 @@ class ModelMixin(mindspore.nn.Module):
                 fn_recursive_set_mem_eff(child)
 
         for module in self.children():
-            if isinstance(module, mindspore.nn.Module):
+            if isinstance(module, torch.nn.Module):
                 fn_recursive_set_mem_eff(module)
 
     def enable_xformers_memory_efficient_attention(self, attention_op: Optional[Callable] = None):
@@ -309,12 +309,12 @@ class ModelMixin(mindspore.nn.Module):
         Examples:
 
         ```py
-        >>> import mindspore
+        >>> import torch
         >>> from diffusers import UNet2DConditionModel
         >>> from xformers.ops import MemoryEfficientAttentionFlashAttentionOp
 
         >>> model = UNet2DConditionModel.from_pretrained(
-        ...     "stabilityai/stable-diffusion-2-1", subfolder="unet", mindspore_dtype=mindspore.float16
+        ...     "stabilityai/stable-diffusion-2-1", subfolder="unet", torch_dtype=torch.float16
         ... )
         >>> model = model.to("cuda")
         >>> model.enable_xformers_memory_efficient_attention(attention_op=MemoryEfficientAttentionFlashAttentionOp)
@@ -333,7 +333,7 @@ class ModelMixin(mindspore.nn.Module):
         save_directory: Union[str, os.PathLike],
         is_main_process: bool = True,
         save_function: Callable = None,
-        state_dict: Optional[Dict[str, mindspore.Tensor]] = None,
+        state_dict: Optional[Dict[str, torch.Tensor]] = None,
     ):
         """
         Save a model and its configuration file to a directory, so that it can be re-loaded using the
@@ -348,9 +348,9 @@ class ModelMixin(mindspore.nn.Module):
                 the main process to avoid race conditions.
             save_function (`Callable`):
                 The function to use to save the state dictionary. Useful on distributed training like TPUs when one
-                need to replace `mindspore.save` by another method. Can be configured with the environment variable
+                need to replace `torch.save` by another method. Can be configured with the environment variable
                 `DIFFUSERS_SAVE_MODE`.
-            state_dict (`Dict[str, mindspore.Tensor]`, *optional*):
+            state_dict (`Dict[str, torch.Tensor]`, *optional*):
                 The state dictionary to save. If `None`, the model's state dictionary will be saved.
         """
         if os.path.isfile(save_directory):
@@ -358,7 +358,7 @@ class ModelMixin(mindspore.nn.Module):
             return
 
         if save_function is None:
-            save_function = mindspore.save
+            save_function = torch.save
 
         os.makedirs(save_directory, exist_ok=True)
 
@@ -383,7 +383,7 @@ class ModelMixin(mindspore.nn.Module):
     @classmethod
     def from_pretrained(cls, pretrained_model_name_or_path: Optional[Union[str, os.PathLike]], **kwargs):
         r"""
-        Instantiate a pretrained pymindspore model from a pre-trained model configuration.
+        Instantiate a pretrained pytorch model from a pre-trained model configuration.
 
         The model is set in evaluation mode by default using `model.eval()` (Dropout modules are deactivated). To train
         the model, you should first set it back in training mode with `model.train()`.
@@ -407,8 +407,8 @@ class ModelMixin(mindspore.nn.Module):
             cache_dir (`Union[str, os.PathLike]`, *optional*):
                 Path to a directory in which a downloaded pretrained model configuration should be cached if the
                 standard cache should not be used.
-            mindspore_dtype (`str` or `mindspore.dtype`, *optional*):
-                Override the default `mindspore.dtype` and load the model under this dtype. If `"auto"` is passed the dtype
+            torch_dtype (`str` or `torch.dtype`, *optional*):
+                Override the default `torch.dtype` and load the model under this dtype. If `"auto"` is passed the dtype
                 will be automatically derived from the model's weights.
             force_download (`bool`, *optional*, defaults to `False`):
                 Whether or not to force the (re-)download of the model weights and configuration files, overriding the
@@ -440,7 +440,7 @@ class ModelMixin(mindspore.nn.Module):
                 Mirror source to accelerate downloads in China. If you are from China and have an accessibility
                 problem, you can set this option to resolve it. Note that we do not guarantee the timeliness or safety.
                 Please refer to the mirror site for more information.
-            device_map (`str` or `Dict[str, Union[int, str, mindspore.device]]`, *optional*):
+            device_map (`str` or `Dict[str, Union[int, str, torch.device]]`, *optional*):
                 A map that specifies where each submodule should go. It doesn't need to be refined to each
                 parameter/buffer name, once a given module name is inside, every submodule of it will be sent to the
                 same device.
@@ -448,10 +448,10 @@ class ModelMixin(mindspore.nn.Module):
                 To have Accelerate compute the most optimized `device_map` automatically, set `device_map="auto"`. For
                 more information about each option see [designing a device
                 map](https://hf.co/docs/accelerate/main/en/usage_guides/big_modeling#designing-a-device-map).
-            low_cpu_mem_usage (`bool`, *optional*, defaults to `True` if mindspore version >= 1.9.0 else `False`):
+            low_cpu_mem_usage (`bool`, *optional*, defaults to `True` if torch version >= 1.9.0 else `False`):
                 Speed up model loading by not initializing the weights and only loading the pre-trained weights. This
                 also tries to not use more than 1x model size in CPU memory (including peak memory) while loading the
-                model. This is only supported when mindspore version >= 1.9.0. If you are using an older version of mindspore,
+                model. This is only supported when torch version >= 1.9.0. If you are using an older version of torch,
                 setting this argument to `True` will raise an error.
 
         <Tip>
@@ -478,7 +478,7 @@ class ModelMixin(mindspore.nn.Module):
         local_files_only = kwargs.pop("local_files_only", False)  # TODO
         use_auth_token = kwargs.pop("use_auth_token", None)
         revision = kwargs.pop("revision", None)
-        mindspore_dtype = kwargs.pop("mindspore_dtype", None)
+        torch_dtype = kwargs.pop("torch_dtype", None)
         subfolder = kwargs.pop("subfolder", None)
         device_map = kwargs.pop("device_map", None)
         low_cpu_mem_usage = kwargs.pop("low_cpu_mem_usage", _LOW_CPU_MEM_USAGE_DEFAULT)
@@ -492,7 +492,7 @@ class ModelMixin(mindspore.nn.Module):
         user_agent = {
             "diffusers": __version__,
             "file_type": "model",
-            "framework": "pymindspore",
+            "framework": "pytorch",
         }
 
         # Load config if we don't provide a configuration
@@ -554,13 +554,13 @@ class ModelMixin(mindspore.nn.Module):
                 for param_name, param in state_dict.items():
                     accepts_dtype = "dtype" in set(inspect.signature(set_module_tensor_to_device).parameters.keys())
                     if accepts_dtype:
-                        set_module_tensor_to_device(model, param_name, param_device, value=param, dtype=mindspore_dtype)
+                        set_module_tensor_to_device(model, param_name, param_device, value=param, dtype=torch_dtype)
                     else:
                         set_module_tensor_to_device(model, param_name, param_device, value=param)
             else:  # else let accelerate handle loading and dispatching.
                 # Load weights and dispatch according to the device_map
                 # by deafult the device_map is None and the weights are loaded on the CPU
-                accelerate.load_checkpoint_and_dispatch(model, model_file, device_map, dtype=mindspore_dtype)
+                accelerate.load_checkpoint_and_dispatch(model, model_file, device_map, dtype=torch_dtype)
 
             loading_info = {
                 "missing_keys": [],
@@ -602,12 +602,12 @@ class ModelMixin(mindspore.nn.Module):
                 "error_msgs": error_msgs,
             }
 
-        if mindspore_dtype is not None and not isinstance(mindspore_dtype, mindspore.dtype):
+        if torch_dtype is not None and not isinstance(torch_dtype, torch.dtype):
             raise ValueError(
-                f"{mindspore_dtype} needs to be of type `mindspore.dtype`, e.g. `mindspore.float16`, but is {type(mindspore_dtype)}."
+                f"{torch_dtype} needs to be of type `torch.dtype`, e.g. `torch.float16`, but is {type(torch_dtype)}."
             )
-        elif mindspore_dtype is not None:
-            model = model.to(mindspore_dtype)
+        elif torch_dtype is not None:
+            model = model.to(torch_dtype)
 
         model.register_to_config(_name_or_path=pretrained_model_name_or_path)
 
@@ -725,15 +725,15 @@ class ModelMixin(mindspore.nn.Module):
     @property
     def device(self) -> device:
         """
-        `mindspore.device`: The device on which the module is (assuming that all the module parameters are on the same
+        `torch.device`: The device on which the module is (assuming that all the module parameters are on the same
         device).
         """
         return get_parameter_device(self)
 
     @property
-    def dtype(self) -> mindspore.dtype:
+    def dtype(self) -> torch.dtype:
         """
-        `mindspore.dtype`: The dtype of the module (assuming that all the module parameters have the same dtype).
+        `torch.dtype`: The dtype of the module (assuming that all the module parameters have the same dtype).
         """
         return get_parameter_dtype(self)
 
@@ -756,7 +756,7 @@ class ModelMixin(mindspore.nn.Module):
             embedding_param_names = [
                 f"{name}.weight"
                 for name, module_type in self.named_modules()
-                if isinstance(module_type, mindspore.nn.Embedding)
+                if isinstance(module_type, torch.nn.Embedding)
             ]
             non_embedding_parameters = [
                 parameter for name, parameter in self.named_parameters() if name not in embedding_param_names
@@ -993,7 +993,7 @@ class ConfigMixin:
             config_file = pretrained_model_name_or_path
         elif os.path.isdir(pretrained_model_name_or_path):
             if os.path.isfile(os.path.join(pretrained_model_name_or_path, cls.config_name)):
-                # Load from a Pymindspore checkpoint
+                # Load from a Pytorch checkpoint
                 config_file = os.path.join(pretrained_model_name_or_path, cls.config_name)
             elif subfolder is not None and os.path.isfile(
                 os.path.join(pretrained_model_name_or_path, subfolder, cls.config_name)

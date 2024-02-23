@@ -15,9 +15,9 @@ import multiprocessing
 from PIL import Image
 from os.path import join
 
-import mindspore
-from mindspore.utils.data import DataLoader
-from mindsporevision.datasets import VisionDataset
+import torch
+from torch.utils.data import DataLoader
+from torchvision.datasets import VisionDataset
 
 from vqgan.load import encode_transform
 from generate.img_to_token import img_to_token
@@ -63,13 +63,13 @@ class GoProDataset(VisionDataset):
         data_list = []
         if self.transform_name == 'six_crop_encode_transform':
             for _img, _target_img in zip(images, target_imgs):
-                _data = mindspore.stack([_img, _target_img], dim=0)
+                _data = torch.stack([_img, _target_img], dim=0)
                 data_list.append(_data)
         else:
-            _data = mindspore.stack([images, target_imgs], dim=0)
+            _data = torch.stack([images, target_imgs], dim=0)
             data_list.append(_data)
         
-        data = mindspore.cat(data_list, dim=0)
+        data = torch.cat(data_list, dim=0)
         
         return data
     

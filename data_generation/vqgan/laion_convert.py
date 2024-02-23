@@ -9,22 +9,22 @@ import time
 from multiprocessing import Pool
 
 import numpy as np
-import mindspore
-import mindspore.nn as nn
+import torch
+import torch.nn as nn
 from timm.data import ImageDataset
-from mindspore.utils.data import DataLoader
+from torch.utils.data import DataLoader
 
-mindspore.set_grad_enabled(False)
+torch.set_grad_enabled(False)
 random.seed(42)
 
 from load import encode_transform, load_model
 
 # set seed
 random_seed = 1
-mindspore.manual_seed(random_seed)
-mindspore.cuda.manual_seed(random_seed)
-mindspore.backends.cudnn.deterministic = True
-mindspore.backends.cudnn.benchmark = False
+torch.manual_seed(random_seed)
+torch.cuda.manual_seed(random_seed)
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
 np.random.seed(random_seed)
 
 # args
