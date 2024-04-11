@@ -2,7 +2,7 @@ import os
 import pathlib
 import sys
 
-from mmcv import DataLoader
+from torch.utils.data import DataLoader
 
 parent_path = pathlib.Path(__file__).absolute().parent.parent
 parent_path = os.path.abspath(parent_path)
@@ -57,13 +57,13 @@ def convert_anns_to_mask(sam_label):
         mask_img += color_mask * mask
         
         del mask, color_mask
-        torch.cuda.empty_cache()
+        # torch.cuda.empty_cache()
     
     mask_img_npy = mask_img.cpu().numpy()
     mask_img_npy = (255 * mask_img_npy).astype(np.uint8)
     
     del mask_img, one_img
-    torch.cuda.empty_cache()
+    # torch.cuda.empty_cache()
     
     return mask_img_npy
 
@@ -139,7 +139,7 @@ def convert_img_to_token(args, img_data_dir, mask_data_dir, out_dir, tar_name, d
     
     dataset = SamDataset(img_data_dir, mask_data_dir, transform=six_crop_encode_transform([800, 800]))
     data_loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_work)
-    img_to_token(args, data_loader, args.output_path, device=device)
+    img_to_token(args, data_loader, out_dir, device=device)
 
 
 def unzip_data(tar_root, img_json_dir, tar_name):
@@ -210,7 +210,7 @@ if __name__ == '__main__':
         unzip_data(args.tar_root, img_json_dir, tar_name)
         convert_sam_label(img_json_dir, mask_dir, tar_name)
         
-        device = f'cuda:{0}'
+        device = 'cuda'
         convert_img_to_token(args, img_json_dir, mask_dir, out_dir, tar_name, device=device)
         
         remove_tmpfile(img_json_dir, mask_dir, tar_name)
