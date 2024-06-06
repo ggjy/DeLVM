@@ -1,4 +1,4 @@
-## Implementation of  "[Data-efficient Large Vision Models through Sequential Autoregression](https://arxiv.org/pdf/2402.04841.pdf)".
+## Implementation of  "[Data-efficient Large Vision Models through Sequential Autoregression](https://arxiv.org/pdf/2402.04841.pdf)" [ICML 2024].
 
 
 <p align="center">
